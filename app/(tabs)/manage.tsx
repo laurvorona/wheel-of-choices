@@ -14,6 +14,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useWheel } from '@/contexts/WheelContext';
 import { parseListInput } from '@/utils/parseListInput';
@@ -26,6 +27,7 @@ export default function ManageScreen() {
     useWheel();
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
+  const insets = useSafeAreaInsets();
 
   const [draft, setDraft] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -209,13 +211,26 @@ export default function ManageScreen() {
         </View>
       </Modal>
 
-      <Modal visible={importOpen} transparent animationType="fade" onRequestClose={closeImport}>
-        <View style={styles.modalBackdrop}>
-          <View style={[styles.modalCard, styles.importCard, { backgroundColor: colors.background }]}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>Import list</Text>
-            <Text style={[styles.importHint, { color: colors.tabIconDefault }]}>
-              Paste options separated by commas or new lines.
-            </Text>
+      <Modal visible={importOpen} transparent animationType="slide" onRequestClose={closeImport}>
+        <KeyboardAvoidingView
+          style={styles.importModalRoot}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <Pressable style={styles.importModalScrim} onPress={closeImport} />
+          <View
+            style={[
+              styles.importCard,
+              {
+                backgroundColor: colors.background,
+                paddingBottom: Math.max(insets.bottom, 16),
+              },
+            ]}>
+            <View style={styles.importHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Import list</Text>
+              <Text style={[styles.importHint, { color: colors.tabIconDefault }]}>
+                Paste options separated by commas or new lines.
+              </Text>
+            </View>
+
             <TextInput
               style={[styles.importInput, { color: colors.text, borderColor: colors.tabIconDefault }]}
               placeholder={'Pizza, Sushi, Tacos\nor one per line'}
@@ -223,25 +238,29 @@ export default function ManageScreen() {
               value={importDraft}
               onChangeText={setImportDraft}
               multiline
+              scrollEnabled
               textAlignVertical="top"
               autoFocus
             />
-            <Pressable onPress={pasteFromClipboard}>
-              <Text style={[styles.pasteLink, { color: colors.tint }]}>Paste from clipboard</Text>
-            </Pressable>
-            <View style={styles.importActions}>
-              <Pressable onPress={closeImport}>
-                <Text style={[styles.modalButton, { color: colors.tabIconDefault }]}>Cancel</Text>
+
+            <View style={styles.importFooter}>
+              <Pressable onPress={pasteFromClipboard}>
+                <Text style={[styles.pasteLink, { color: colors.tint }]}>Paste from clipboard</Text>
               </Pressable>
-              <Pressable onPress={() => importParsed('add')}>
-                <Text style={[styles.modalButton, { color: colors.tint }]}>Add to list</Text>
-              </Pressable>
-              <Pressable onPress={() => importParsed('replace')}>
-                <Text style={[styles.modalButton, styles.replaceButton]}>Replace all</Text>
-              </Pressable>
+              <View style={styles.importActions}>
+                <Pressable style={styles.importActionButton} onPress={closeImport}>
+                  <Text style={[styles.modalButton, { color: colors.tabIconDefault }]}>Cancel</Text>
+                </Pressable>
+                <Pressable style={styles.importActionButton} onPress={() => importParsed('add')}>
+                  <Text style={[styles.modalButton, { color: colors.tint }]}>Add to list</Text>
+                </Pressable>
+                <Pressable style={styles.importActionButton} onPress={() => importParsed('replace')}>
+                  <Text style={[styles.modalButton, styles.replaceButton]}>Replace all</Text>
+                </Pressable>
+              </View>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </KeyboardAvoidingView>
   );
@@ -365,20 +384,43 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
+  importModalRoot: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  importModalScrim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
   importCard: {
+    width: '100%',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 16,
+    paddingTop: 20,
     maxHeight: '85%',
+  },
+  importHeader: {
+    gap: 6,
+    marginBottom: 12,
   },
   importHint: {
     fontSize: 14,
     lineHeight: 20,
   },
   importInput: {
-    minHeight: 160,
+    height: 140,
     borderWidth: 1,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 16,
+    marginBottom: 12,
+  },
+  importFooter: {
+    flexShrink: 0,
+    gap: 12,
+    paddingTop: 4,
   },
   pasteLink: {
     fontSize: 15,
@@ -386,9 +428,14 @@ const styles = StyleSheet.create({
   },
   importActions: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     flexWrap: 'wrap',
-    gap: 16,
+    gap: 8,
+  },
+  importActionButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 4,
   },
   replaceButton: {
     color: '#d32f2f',
